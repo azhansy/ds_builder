@@ -1,10 +1,8 @@
 name: ds_builder
 description: Flutter项目构建工具，包括路由代码生成和资源R文件生成。与build_runner无缝集成。
 version: 1.0.0
-publish_to: 'https://pub.dev'
 
 repository: https://github.com/azhansy/ds_builder
-hosted_by: pub.dev
 
 environment:
   sdk: ^3.9.2

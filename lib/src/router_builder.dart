@@ -502,7 +502,6 @@ class RouterBuilder implements Builder {
 
   /// Generate page template
   String _generatePageTemplate(String pageName, String packageName, {bool param = false}) {
-    final pageBaseName = pageName.replaceAll('Page', '');
     final pageFileName = _toSnakeCase(pageName);
     final controllerFileName = pageFileName.replaceAll('_page', '_controller');
     final stateFileName = pageFileName.replaceAll('_page', '_state');
