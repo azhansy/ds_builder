@@ -1,0 +1,127 @@
+# DS Builder 配置
+
+此文件配置项目的 DS Builder 行为。
+
+## 位置
+
+将此文件放在项目根目录中，与 `pubspec.yaml` 并排。
+
+```
+your_project/
+├── pubspec.yaml
+├── ds_builder_config.yaml  ← 这里
+├── lib/
+├── assets/
+└── ...
+```
+
+## 配置选项
+
+### ignoreDirs（资源构建器）
+
+指定在生成 R 类时应忽略的 `assets/` 内的目录。
+
+```yaml
+ignoreDirs:
+  - images/emoji
+  - images/country
+  - fonts
+```
+
+**默认值：**
+```yaml
+ignoreDirs:
+  - images/emoji
+  - images/country
+  - fonts
+```
+
+**使用示例：**
+
+如果您想排除其他目录：
+
+```yaml
+ignoreDirs:
+  - images/emoji
+  - images/country
+  - fonts
+  - assets/temp       # 自定义忽略目录
+  - vendor            # 另一个自定义目录
+```
+
+### customImports（路由构建器）
+
+指定在生成的 `router.g.dart` 文件中要包含的自定义导入。这些导入会自动应用项目的包名。
+
+**示例：**
+
+```yaml
+customImports:
+  - "import 'package:your_app/widgets/common_scaffold.dart';"
+  - "import 'package:your_app/features/home/home_screen.dart';"
+  - "import 'package:flutter_riverpod/flutter_riverpod.dart';"
+```
+
+**说明：** 生成器会自动使用项目的实际包名，所以你无需担心 hardcoding 特定项目名称。这些自定义导入将被添加到生成代码的顶部。
+
+**多项目兼容：** 对于 ugos 项目，可以这样设置：
+```yaml
+customImports:
+  - "import 'package:ugos/widgets/home_screen.dart';"
+  - "import 'package:ugos/features/home/upgrade_notice_page.dart';"
+```
+
+对于其他项目，修改包名即可：
+```yaml
+customImports:
+  - "import 'package:myapp/widgets/common_scaffold.dart';"
+  - "import 'package:myapp/features/home/home_page.dart';"
+```
+
+### customCode（路由构建器）
+
+向生成的路由代码中添加自定义代码片段（可选）。
+
+**示例：**
+
+```yaml
+customCode: |
+  // 自定义路由中间件
+  final routeGuards = [authGuard, loggingGuard];
+```
+
+After updating this file, re-run:
+
+```bash
+dart run build_runner build
+```
+
+## Example Configurations
+
+### Minimal (uses all defaults)
+
+Don't create this file at all, or keep it empty.
+
+### Custom Ignore Directories
+
+```yaml
+ignoreDirs:
+  - images/emoji
+  - images/country
+  - fonts
+  - images/dev-only
+  - docs
+```
+
+### Include Everything
+
+```yaml
+ignoreDirs: []
+```
+
+## Notes
+
+- Comment lines starting with `#` are allowed
+- Paths are relative to `assets/` directory
+- Changes to this file are detected automatically during `dart run build_runner watch`
+- If this file doesn't exist, defaults are used silently

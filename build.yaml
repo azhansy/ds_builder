@@ -1,0 +1,18 @@
+# Build configuration for DS Builder
+builders:
+  router:
+    import: "package:ds_builder/builder.dart"
+    builder_factories: ["routerBuilder"]
+    build_extensions:
+      "route_config.dart": ["../lib/router.g.dart"]
+    auto_apply: dependents
+    build_to: source
+
+  assets:
+    import: "package:ds_builder/builder.dart"
+    builder_factories: ["assetsBuilder"]
+    build_extensions:
+      "$lib$": ["res/r.dart"]
+    auto_apply: dependents
+    build_to: source
+    runs_before: [":router"]
