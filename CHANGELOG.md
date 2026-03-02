@@ -1,3 +1,12 @@
+## [1.0.2] - 2026-03-02
+
+### 修复
+- 路由生成器在生成 `StatefulShellRoute` 时会引用 `HomeScreen`，现已在未配置自定义导入时自动补充 `widgets/home_screen.dart` 导入
+- 新增 `HomeScreen` 自动生成：当存在非 `auth` 分组路由且 `lib/widgets/home_screen.dart` 不存在时，自动创建默认实现
+
+### 改进
+- 减少路由模板初次生成时因缺失 `HomeScreen` 导致的编译错误
+
 ## [1.1.0] - 2026-02-02
 
 ### 新功能

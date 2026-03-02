@@ -174,6 +174,7 @@ Builder在 `dart run build_runner build` 期间运行，并被缓存。后续构
 
 ```bash
 dart run build_runner watch
+dart pub publish --dry-run
 ```
 
 ## 许可证

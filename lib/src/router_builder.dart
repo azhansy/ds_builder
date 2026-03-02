@@ -35,12 +35,16 @@ class RouterBuilder implements Builder {
       // Load custom configuration first and get package name
       final customConfig = await _loadConfig(buildStep);
       final packageName = buildStep.inputId.package; // Use actual package name
+      final generateAuthPages = customConfig['generateAuthPages'] as bool? ?? true;
 
       // Auto-generate missing page files
-      await _checkAndCreatePages(routes, buildStep, packageName);
+      await _checkAndCreatePages(routes, buildStep, packageName, generateAuthPages: generateAuthPages);
 
       // Auto-generate missing controller/state/repository files
-      await _checkAndCreateControllers(routes, buildStep, packageName);
+      await _checkAndCreateControllers(routes, buildStep, packageName, generateAuthPages: generateAuthPages);
+
+      // Auto-generate missing HomeScreen file
+      await _checkAndCreateHomeScreen(routes, packageName);
 
       // Generate router code
       final generatedCode = _generateRouterCode(routes, customConfig, packageName);
@@ -63,7 +67,7 @@ class RouterBuilder implements Builder {
 
     if (!await configFile.exists()) {
       log.info('ds_builder_config.yaml not found, using defaults');
-      return {'customImports': [], 'customCode': ''};
+      return {'customImports': <String>[], 'customCode': '', 'generateAuthPages': true};
     }
 
     try {
@@ -73,24 +77,28 @@ class RouterBuilder implements Builder {
       if (yamlMap != null) {
         final customImports = <String>[];
         if (yamlMap.containsKey('customImports')) {
-          final imports = yamlMap['customImports'] as YamlList?;
-          if (imports != null) {
-            customImports.addAll(List<String>.from(imports));
+          final imports = yamlMap['customImports'];
+          if (imports is YamlList) {
+            customImports.addAll(imports.map((e) => e.toString()));
+          } else if (imports is List) {
+            customImports.addAll(imports.map((e) => e.toString()));
           }
         }
 
         final customCode = yamlMap['customCode'] as String? ?? '';
+        final generateAuthPages = yamlMap['generateAuthPages'] as bool? ?? true;
         log.info('Loaded custom configuration from ds_builder_config.yaml');
         return {
           'customImports': customImports,
           'customCode': customCode,
+          'generateAuthPages': generateAuthPages,
         };
       }
     } catch (e) {
       log.warning('Error reading ds_builder_config.yaml: $e, using defaults');
     }
 
-    return {'customImports': [], 'customCode': ''};
+    return {'customImports': <String>[], 'customCode': '', 'generateAuthPages': true};
   }
 
   /// Get project root path from BuildStep
@@ -155,7 +163,13 @@ class RouterBuilder implements Builder {
   /// Generate router code
   String _generateRouterCode(List<RouteEntry> routes, [Map<String, dynamic> config = const {}, String packageName = 'app']) {
     final buffer = StringBuffer();
-    final customImports = config['customImports'] as List<String>? ?? [];
+    final customImports = _parseCustomImports(config['customImports']);
+    final hasHomeScreenImport = customImports.any(
+      (importLine) => importLine.contains('HomeScreen') || importLine.contains('home_screen.dart'),
+    );
+    final useUpgradeNoticeErrorPage = customImports.any(
+      (importLine) => importLine.contains('UpgradeNoticePage') || importLine.contains('upgrade_notice_page.dart'),
+    );
 
     // Header
     buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND');
@@ -170,6 +184,10 @@ class RouterBuilder implements Builder {
     // Add custom imports from configuration
     for (final import in customImports) {
       buffer.writeln(import);
+    }
+
+    if (!hasHomeScreenImport) {
+      buffer.writeln("import 'package:$packageName/widgets/home_screen.dart';");
     }
 
     // Generate imports for pages
@@ -190,9 +208,17 @@ class RouterBuilder implements Builder {
     buffer.write(_generateBranchPaths(routes));
 
     // Generate GoRouter
-    buffer.write(_generateGoRouter(routes));
+    buffer.write(_generateGoRouter(routes, useUpgradeNoticeErrorPage: useUpgradeNoticeErrorPage));
 
     return buffer.toString();
+  }
+
+  List<String> _parseCustomImports(dynamic rawImports) {
+    if (rawImports is List<String>) return rawImports;
+    if (rawImports is List) {
+      return rawImports.map((item) => item.toString()).toList();
+    }
+    return <String>[];
   }
 
   /// Generate page imports
@@ -286,7 +312,7 @@ class RouterBuilder implements Builder {
   }
 
   /// Generate GoRouter configuration
-  String _generateGoRouter(List<RouteEntry> routes) {
+  String _generateGoRouter(List<RouteEntry> routes, {required bool useUpgradeNoticeErrorPage}) {
     final buffer = StringBuffer();
 
     buffer.writeln('final GoRouter router = GoRouter(');
@@ -303,7 +329,11 @@ class RouterBuilder implements Builder {
     buffer.writeln();
     buffer.writeln('    return null;');
     buffer.writeln('  },');
-    buffer.writeln('  errorBuilder: (context, state) => UpgradeNoticePage(missingRoute: state.uri.toString()),');
+    if (useUpgradeNoticeErrorPage) {
+      buffer.writeln('  errorBuilder: (context, state) => UpgradeNoticePage(missingRoute: state.uri.toString()),');
+    } else {
+      buffer.writeln("  errorBuilder: (context, state) => Scaffold(body: Center(child: Text('Route not found: \${state.uri}'))),");
+    }
     buffer.writeln('  routes: [');
 
     // Auth routes
@@ -460,9 +490,15 @@ class RouterBuilder implements Builder {
   }
 
   /// Check and create missing page files
-  Future<void> _checkAndCreatePages(List<RouteEntry> routes, BuildStep buildStep, String packageName) async {
+  Future<void> _checkAndCreatePages(
+    List<RouteEntry> routes,
+    BuildStep buildStep,
+    String packageName, {
+    required bool generateAuthPages,
+  }) async {
     for (final route in routes) {
-      if (route.group.isEmpty || route.group == 'auth') continue;
+      if (!generateAuthPages && route.group == 'auth') continue;
+      if (route.group.isEmpty) continue;
 
       final pageName = route.page;
       if (pageName.isEmpty) continue;
@@ -576,9 +612,15 @@ class _${pageName}State extends ConsumerState<$pageName> {
   }
 
   /// Check and create missing controller/state/repository files
-  Future<void> _checkAndCreateControllers(List<RouteEntry> routes, BuildStep buildStep, String packageName) async {
+  Future<void> _checkAndCreateControllers(
+    List<RouteEntry> routes,
+    BuildStep buildStep,
+    String packageName, {
+    required bool generateAuthPages,
+  }) async {
     for (final route in routes) {
-      if (route.group.isEmpty || route.group == 'auth') continue;
+      if (!generateAuthPages && route.group == 'auth') continue;
+      if (route.group.isEmpty) continue;
 
       final pageName = route.page;
       if (pageName.isEmpty) continue;
@@ -597,6 +639,48 @@ class _${pageName}State extends ConsumerState<$pageName> {
         await _createControllerIfMissing(route, controllerFile, packageName);
       }
     }
+  }
+
+  /// Check and create missing HomeScreen file for shell routes
+  Future<void> _checkAndCreateHomeScreen(List<RouteEntry> routes, String packageName) async {
+    final hasShellRoutes = routes.any((route) => route.group != 'auth');
+    if (!hasShellRoutes) return;
+
+    final homeScreenPath = 'lib/widgets/home_screen.dart';
+    final homeScreenFile = File(homeScreenPath);
+
+    if (await homeScreenFile.exists()) return;
+
+    try {
+      await homeScreenFile.parent.create(recursive: true);
+      await homeScreenFile.writeAsString(_generateHomeScreenTemplate(packageName));
+      log.info('✅ Created HomeScreen: ${homeScreenFile.path}');
+    } catch (e) {
+      log.warning('Failed to create HomeScreen: $e');
+    }
+  }
+
+  /// Generate HomeScreen template
+  String _generateHomeScreenTemplate(String packageName) {
+    return '''import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+class HomeScreen extends StatelessWidget {
+  final StatefulNavigationShell navigationShell;
+
+  const HomeScreen({
+    super.key,
+    required this.navigationShell,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: navigationShell,
+    );
+  }
+}
+''';
   }
 
   /// Create controller file if missing

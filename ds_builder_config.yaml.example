@@ -88,6 +88,20 @@ customImports:
 customCode: |
   // 自定义路由中间件
   final routeGuards = [authGuard, loggingGuard];
+
+### generateAuthPages（路由构建器）
+
+是否自动为 `auth` 分组生成 Page / Controller / State / Repository 文件。
+
+**默认值：**
+```yaml
+generateAuthPages: true
+```
+
+**示例：关闭 auth 自动生成**
+```yaml
+generateAuthPages: false
+```
 ```
 
 After updating this file, re-run:
