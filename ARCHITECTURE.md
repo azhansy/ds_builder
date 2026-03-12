@@ -27,11 +27,14 @@ ds_builder/
    - `RouteNames` 类包含静态常量
    - go_router 的路由配置
    - 自动嵌套路由处理
+  - 基于路由级 `requireLogin` 的登录重定向控制
 
 **主要功能**：
 - 强制执行 Page 类命名（必须以 "Page" 结尾）
 - 按组处理嵌套路由
 - 生成类型安全的路由引用
+- 支持路由配置格式：`[group, path, pageName, hasParams, requireLogin]`
+- 兼容旧格式：`[group, path, pageName, hasParams]`（默认 `requireLogin = true`）
 
 ### 资源构建器
 

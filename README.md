@@ -28,11 +28,18 @@ dev_dependencies:
 
 ```dart
 const List<List<Object>> routesConfig = [
-  ['auth', '/login', 'LoginPage', false],
-  ['home', '/home', 'HomePage', false],
-  ['workflow', '/workflow/:id', 'WorkflowPage', true],
+  ['auth', '/login', 'LoginPage', false, false],
+  ['home', '/home', 'HomePage', false, true],
+  ['workflow', '/workflow/:id', 'WorkflowPage', true, true],
+  ['public', '/about', 'AboutPage', false, false],
 ];
 ```
+
+格式：`[group, path, pageName, hasParams, requireLogin]`
+
+- `hasParams`：是否通过 `state.extra` 传参
+- `requireLogin`：是否需要登录校验；`false` 时会跳过 `redirect` 中的登录拦截
+- 兼容旧格式：4 个参数时默认 `requireLogin = true`
 
 2. 运行build_runner：
 
@@ -151,6 +158,12 @@ SvgPicture.asset(R.attachmentSvg);
 ### 构建失败 "找不到 route_config.dart"
 
 确保 `lib/route_config.dart` 存在于你的项目中。
+
+### 配置了免登录路由但仍被跳转到登录页
+
+1. 检查 `routesConfig` 第 5 个参数是否为 `false`
+2. 确保访问路径与配置路径匹配（例如 `/about`）
+3. 重新执行：`dart run build_runner build --delete-conflicting-outputs`
 
 ### 资源未出现在 R.dart 中
 

@@ -30,13 +30,18 @@ flutter pub get
 ```dart
 // lib/route_config.dart
 const List<List<Object>> routesConfig = [
-  ['home', '/', 'HomePage', false],
-  ['profile', '/profile', 'ProfilePage', false],
-  ['detail', '/detail/:id', 'DetailPage', true],
+  ['home', '/', 'HomePage', false, true],
+  ['profile', '/profile', 'ProfilePage', false, true],
+  ['detail', '/detail/:id', 'DetailPage', true, true],
+  ['about', '/about', 'AboutPage', false, false],
 ];
 ```
 
-格式：`[group, path, pageName, hasParams]`
+格式：`[group, path, pageName, hasParams, requireLogin]`
+
+- `hasParams`：是否需要通过 `state.extra` 传参
+- `requireLogin`：是否需要登录，`false` 表示公开路由（不会被登录重定向拦截）
+- 兼容旧格式：如果只写 4 个参数，默认 `requireLogin = true`
 
 ### 第 3 步：生成代码
 

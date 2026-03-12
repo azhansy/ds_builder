@@ -134,7 +134,7 @@ class RouterBuilder implements Builder {
 
     // Parse each route entry - handle both single and double quotes
     final entryRegex = RegExp(
-      r"""\[\s*['"]([^'"]*)['"][\s,]+['"]([^'"]*)['"][\s,]+['"]([^'"]*)['"][\s,]+(true|false)\s*\]""",
+      r"""\[\s*['"]([^'"]*)['"][\s,]+['"]([^'"]*)['"][\s,]+['"]([^'"]*)['"][\s,]+(true|false)(?:\s*,\s*(true|false))?\s*\]""",
       multiLine: true,
     );
 
@@ -143,10 +143,11 @@ class RouterBuilder implements Builder {
       final path = entryMatch.group(2) ?? '';
       final page = entryMatch.group(3) ?? '';
       final param = entryMatch.group(4) == 'true';
+      final requireLogin = entryMatch.group(5) == null ? true : entryMatch.group(5) == 'true';
 
       _ensurePageNameValid(page);
 
-      routes.add(RouteEntry(group: group, path: path, page: page, param: param));
+      routes.add(RouteEntry(group: group, path: path, page: page, param: param, requireLogin: requireLogin));
     }
 
     log.info('Parsed ${routes.length} routes');
@@ -314,11 +315,21 @@ class RouterBuilder implements Builder {
   /// Generate GoRouter configuration
   String _generateGoRouter(List<RouteEntry> routes, {required bool useUpgradeNoticeErrorPage}) {
     final buffer = StringBuffer();
+    final publicRoutes = routes.where((r) => !r.requireLogin).map(_getFullPath).toSet().toList()..sort();
 
     buffer.writeln('final GoRouter router = GoRouter(');
     buffer.writeln('  navigatorKey: GlobalKey<NavigatorState>(),');
     buffer.writeln('  refreshListenable: authStatus,');
     buffer.writeln('  redirect: (context, state) {');
+    if (publicRoutes.isNotEmpty) {
+      buffer.writeln('    const publicRoutes = <String>{');
+      for (final routePath in publicRoutes) {
+        buffer.writeln("      '$routePath',");
+      }
+      buffer.writeln('    };');
+      buffer.writeln('    if (publicRoutes.contains(state.matchedLocation)) return null;');
+      buffer.writeln();
+    }
     buffer.writeln('    final loggedIn = authStatus.value;');
     buffer.writeln("    final isLoggingIn = state.matchedLocation == RouteNames.auth;");
     buffer.writeln();
@@ -848,11 +859,19 @@ class RouteEntry {
   final String path;
   final String page;
   final bool param;
+  final bool requireLogin;
 
-  const RouteEntry({required this.group, required this.path, required this.page, required this.param});
+  const RouteEntry({
+    required this.group,
+    required this.path,
+    required this.page,
+    required this.param,
+    this.requireLogin = true,
+  });
 
   @override
-  String toString() => 'RouteEntry(group: $group, path: $path, page: $page, param: $param)';
+  String toString() =>
+      'RouteEntry(group: $group, path: $path, page: $page, param: $param, requireLogin: $requireLogin)';
 }
 
 /// Builder factory for build_runner
