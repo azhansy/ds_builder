@@ -1,3 +1,13 @@
+## [1.0.4] - 2026-03-12
+
+### 改进
+- 移除 freezed 依赖，使用普通 Dart 类替代
+- 生成的状态类使用简单的多构造函数模式和三元判断
+- 状态类支持 `when` 方法用于模式匹配
+- 页面模板使用 `state.isLoading/isSuccess/isError` 判断代替 `when` 调用
+- 统一导入 `StateStatus` 枚举，路径为 `package:{packageName}/core/models/state_status.dart`
+- 状态文件和仓库文件现在独立重新生成，不依赖控制器是否存在
+
 ## [1.0.3] - 2026-03-12
 
 ### 新功能

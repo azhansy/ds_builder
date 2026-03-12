@@ -580,11 +580,11 @@ class _${pageName}State extends ConsumerState<$pageName> {
     
     return CommonScaffold(
       titleStr: '$pageName',
-      body: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        success: () => const Center(child: Text('TODO: Implement $pageName')),
-        error: (message) => Center(child: Text('Error: \$message')),
-      ),
+      body: state.isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : state.isSuccess
+          ? const Center(child: Text('TODO: Implement $pageName'))
+          : Center(child: Text('Error: \${state.message}')),
     );
   }
 }
@@ -610,11 +610,11 @@ class _${pageName}State extends ConsumerState<$pageName> {
     
     return CommonScaffold(
       titleStr: '$pageName',
-      body: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        success: () => const Center(child: Text('TODO: Implement $pageName')),
-        error: (message) => Center(child: Text('Error: \$message')),
-      ),
+      body: state.isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : state.isSuccess
+          ? const Center(child: Text('TODO: Implement $pageName'))
+          : Center(child: Text('Error: \${state.message}')),
     );
   }
 }
@@ -649,6 +649,12 @@ class _${pageName}State extends ConsumerState<$pageName> {
         log.info('🔧 Creating missing controller: $controllerPath');
         await _createControllerIfMissing(route, controllerFile, packageName);
       }
+
+      // Check and create state file independently
+      await _createStateIfMissing(route, packageName);
+      
+      // Check and create repository file independently
+      await _createRepositoryIfMissing(route);
     }
   }
 
@@ -707,17 +713,13 @@ class HomeScreen extends StatelessWidget {
       await controllerFile.writeAsString(controllerContent);
 
       log.info('✅ Created controller: ${controllerFile.path}');
-
-      // Also create state and repository files
-      await _createStateIfMissing(route);
-      await _createRepositoryIfMissing(route);
     } catch (e) {
       log.warning('Failed to create controller: $e');
     }
   }
 
   /// Create state file if missing
-  Future<void> _createStateIfMissing(RouteEntry route) async {
+  Future<void> _createStateIfMissing(RouteEntry route, String packageName) async {
     final pageFileName = _toSnakeCase(route.page);
     final stateFileName = pageFileName.replaceAll('_page', '_state');
     final statePath = 'lib/features/${route.group}/models/$stateFileName.dart';
@@ -727,7 +729,7 @@ class HomeScreen extends StatelessWidget {
 
     try {
       await stateFile.parent.create(recursive: true);
-      final stateContent = _generateStateTemplate(route);
+      final stateContent = _generateStateTemplate(route, packageName);
       await stateFile.writeAsString(stateContent);
       log.info('✅ Created state: ${stateFile.path}');
     } catch (e) {
@@ -807,29 +809,50 @@ class $controllerClassName extends StateNotifier<$stateClassName> {
   }
 
   /// Generate state template
-  String _generateStateTemplate(RouteEntry route) {
+  String _generateStateTemplate(RouteEntry route, String packageName) {
     final pageName = route.page;
     final pageBaseName = pageName.replaceAll('Page', '');
     final stateClassName = '${pageBaseName}State';
-    final pageFileName = _toSnakeCase(pageName);
-    final stateFileName = pageFileName.replaceAll('_page', '_state');
 
-    return 'import \'package:freezed_annotation/freezed_annotation.dart\';\n\n'
-        'part \'$stateFileName.freezed.dart\';\n\n'
-        '/// State for ${route.page}\n'
-        '@freezed\n'
-        'sealed class $stateClassName with _\$$stateClassName {\n'
-        '  const $stateClassName._();\n'
-        '  \n'
-        '  const factory $stateClassName.loading() = _Loading;\n'
-        '  const factory $stateClassName.success() = _Success;\n'
-        '  const factory $stateClassName.error({required String message}) = _Error;\n'
-        '\n'
-        '  // Convenience getters\n'
-        '  bool get isLoading => this is _Loading;\n'
-        '  bool get isSuccess => this is _Success;\n'
-        '  bool get isError => this is _Error;\n'
-        '}\n';
+    return '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:$packageName/core/models/state_status.dart';
+
+/// State for ${route.page}
+class $stateClassName {
+  final StateStatus status;
+  final String? message;
+
+  const $stateClassName._({required this.status, this.message});
+
+  const $stateClassName.loading() : this._(status: StateStatus.loading);
+
+  const $stateClassName.success() : this._(status: StateStatus.success);
+
+  const $stateClassName.error({required String message}) : this._(status: StateStatus.error, message: message);
+
+  bool get isLoading => status == StateStatus.loading;
+
+  bool get isSuccess => status == StateStatus.success;
+
+  bool get isError => status == StateStatus.error;
+
+  /// Pattern matching using when method
+  T when<T>({
+    required T Function() loading,
+    required T Function() success,
+    required T Function(String message) error,
+  }) {
+    switch (status) {
+      case StateStatus.loading:
+        return loading();
+      case StateStatus.success:
+        return success();
+      case StateStatus.error:
+        return error(message ?? '');
+    }
+  }
+}
+''';
   }
 
   /// Generate repository template
